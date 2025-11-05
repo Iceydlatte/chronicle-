@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>harz chronicle</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!--
+      Background image usage (index only)
+
+      - This page applies a full-bleed background image for the blog UI.
+      - To use the provided image, place the image file at: `public/assets/bg.jpg`
+        (relative to the project root). Example path on disk:
+        `d:\\tec\\blog final\\public\\assets\\bg.jpg`.
+      - If you prefer a different filename/location, update the URL in the
+        `background-image` CSS below.
+      - These styles are added inline in this file and therefore only affect
+        the index page served from `/`.
+    -->
+
+    <style>
+  /* Black & white theme (monochrome) */
+  :root{ --bg:#ffffff; --card:#ffffff; --text:#0b0b0b; --muted:#666666; --accent:#000000; --border:#e6e6e6 }
+  /* Keep a dark set for compatibility, but primary theme is B/W */
+  .dark{ --bg:#0b0b0b; --card:#0f0f0f; --text:#f6f6f6; --muted:#9a9a9a; --accent:#ffffff; --border:#1a1a1a }
+      /* Page background: gradient overlay + photo.
+         The image is read from the CSS variable `--bg-image` so the page
+         can select a random image at runtime. By default it falls back to
+         `./assets/bg.jpg`.
+      */
+      body{
+        background:var(--bg);
+        color:var(--text);
+        font-family:'Inter', system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;
+  /* No transition: switch themes instantly (no day/night fade) */
+  transition: none;
+        /* Use the CSS variable --bg-image (set by JS). Fallback to ./assets/bg.jpg */
+        background-image: linear-gradient(rgba(3,6,20,0.35), rgba(3,6,20,0.12)), var(--bg-image, url('./assets/bg.jpg'));
+        background-size: cover;
+        background-position: center center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+      }
+        /* In dark mode, increase overlay opacity for legibility */
+      /* Note: removed separate .dark body overlay so theme changes are immediate
+        and the same background image is used for both light and dark modes. */
+  .container{max-width:980px}
+
+  .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px}
+      .controls{display:flex;gap:8px;align-items:center}
+      .search-input{min-width:220px}
+
+  .fade-in-up{animation:fadeInUp 520ms cubic-bezier(.2,.9,.2,1) both}
+  .pop{animation:pop 320ms cubic-bezier(.2,.9,.2,1) both}
+  .slide-down{animation:slideDown 360ms cubic-bezier(.2,.9,.2,1) both}
+  .new-post{animation:newPostPulse 760ms cubic-bezier(.2,.9,.2,1) both}
+
+  @keyframes newPostPulse{0%{transform:scale(.98);box-shadow:0 8px 24px rgba(11,132,255,0.06)}40%{transform:scale(1.02);box-shadow:0 18px 42px rgba(11,132,255,0.12)}100%{transform:scale(1);box-shadow:0 10px 30px rgba(11,132,255,0.06)}}
+
+      @keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes pop{0%{transform:scale(.985);opacity:.7}60%{transform:scale(1.03);opacity:1}100%{transform:scale(1)}}
+      @keyframes slideDown{from{max-height:0;opacity:0;transform:translateY(-6px)}to{max-height:400px;opacity:1;transform:translateY(0)}}
+
+  /* Post cards */
+  .card.post-card{background:var(--card);border:1px solid var(--border);border-radius:14px;transition:transform .22s cubic-bezier(.2,.9,.2,1),box-shadow .22s cubic-bezier(.2,.9,.2,1);box-shadow:0 8px 20px rgba(11,15,18,0.06);padding:0;display:block}
+  .card.post-card .card-body{padding:1.25rem}
+  .card.post-card:hover{transform:translateY(-6px);box-shadow:0 20px 44px rgba(15,23,42,0.08)}
+  /* Saved posts: no animations or hover pop — keep them static per user preference */
+  .card.post-card.saved,
+  .card.post-card.saved:hover{
+    animation: none !important;
+    transform: none !important;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.04) !important;
+  }
+  /* Saved badge shown when a post is saved */
+  .saved-badge{display:inline-block;opacity:1;transform:none;transition:opacity .18s ease,transform .18s ease;margin-left:8px;font-size:0.65rem;padding:0.28rem 0.45rem;background:#000;color:#fff}
+  .saved-badge.show{opacity:1}
+  /* like button */
+  .like-btn{border-radius:8px;border:1px solid var(--border);color:var(--text);background:transparent}
+  .dislike-btn{border-radius:8px;border:1px solid var(--border);color:var(--text);background:transparent}
+  /* preview-box removed — live preview disabled per user request */
+      .card .card-title{color:var(--text);margin-bottom:6px}
+      .card .card-text{color:var(--muted)}
+      .post-image{max-width:100%;height:auto;border-radius:8px;margin-bottom:8px}
+
+      .muted{color:var(--muted)}
+      a.button{background:var(--accent);color:white;padding:8px 12px;border-radius:8px;text-decoration:none}
+  .comments-wrap{overflow:hidden}
+  /* posts masonry-style layout to avoid large vertical gaps between uneven cards */
+  #posts{column-count:1;column-gap:18px;padding-top:6px}
+  @media(min-width:768px){ #posts{column-count:2} }
+  /* make each card behave as a block inside columns (masonry) */
+  .card.post-card{display:inline-block;width:100%;margin:0 0 16px}
+  /* ensure cards do not break across columns */
+  .card.post-card{break-inside:avoid; -webkit-column-break-inside:avoid;}
+      .btn:active{transform:translateY(1px)}
+
+  .toggle{cursor:pointer;padding:6px 10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:rgba(255,255,255,0.02);display:inline-flex;align-items:center;justify-content:center}
+      .hl{background:linear-gradient(90deg, rgba(255,255,0,0.18), rgba(255,255,0,0.08));padding:0 2px;border-radius:3px}
+      /* primary button polish */
+      .btn-primary{background:var(--accent);border-color:var(--accent);box-shadow:0 6px 18px rgba(11,132,255,0.08)}
+      .btn-primary:hover{background:color-mix(in srgb, var(--accent) 85%, black 15%)}
+      .topbar h1{font-weight:700}
+      .muted{color:var(--muted);font-size:0.95rem}
+  .logo{display:inline-flex;align-items:center;gap:12px;font-weight:800;font-size:1.08rem}
+  .logo .mark{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#666);display:inline-block;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+  .topbar .muted{font-size:0.95rem;color:var(--muted)}
+    </style>
+    <!-- Random background selector
+         Place multiple images in `public/assets/` (for example: bg1.jpg, bg2.jpg, bg3.jpg)
+         and this script will pick one at random each time the page loads. If none of
+         the sample filenames exist, it falls back to `bg.jpg`.
+    -->
+    <script>
+      (function(){
+  // Candidate filenames to choose from (edit/add more as needed)
+  // We include an SVG fallback (bg.svg) shipped in the repo so the page
+  // has a guaranteed background even when JPEGs are not provided.
+  const candidates = ['yoo.jpg'];
+
+        // Try a random candidate, verify it loads, otherwise fallback to bg.jpg
+        function pickRandomBackground(){
+          const choice = candidates[Math.floor(Math.random()*candidates.length)];
+          const url = `./assets/${choice}`;
+          const img = new Image();
+          img.onload = function(){
+            document.documentElement.style.setProperty('--bg-image', `url('${url}')`);
+          };
+          img.onerror = function(){
+            // fallback to the shipped SVG background (bg.svg)
+            document.documentElement.style.setProperty('--bg-image', `url('./assets/bg.svg')`);
+          };
+          // Start load
+          img.src = url;
+        }
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pickRandomBackground);
+        else pickRandomBackground();
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="container py-4">
+      <div class="topbar">
+        <div class="d-flex align-items-center">
+          <div class="logo me-3"><span class="mark"></span><span style="font-size:1.05rem">harz chronicle</span></div>
+          <div>
+            <div class="muted">Create posts</div>
+            <div class="muted" style="font-size:0.85rem">Creator: Harshitth</div>
+          </div>
+        </div>
+        <div class="controls">
+          <input id="search" class="form-control form-control-sm search-input" placeholder="Search posts..." aria-label="Search posts">
+          <button id="savedBtn" class="btn btn-sm btn-outline-secondary ms-2" type="button">Saved (0)</button>
+          <!-- Login/Register links (shown when not authenticated) -->
+           <a id="loginLink" class="btn btn-sm btn-outline-primary ms-2" href="login.html">Login</a>
+           <a id="registerLink" class="btn btn-sm btn-outline-secondary ms-2" href="register.html">Register</a>
+          <!-- Authenticated user area (hidden when not logged in) -->
+          <span id="authUserArea" style="display:none;align-items:center;gap:8px">
+            <span id="authUserName" class="muted" style="margin-left:8px"></span>
+            <button id="logoutBtn" class="btn btn-sm btn-outline-danger ms-2">Logout</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="card mb-4 fade-in-up">
+        <div class="card-body">
+          <form id="postForm">
+            <div class="mb-3">
+              <input id="title" class="form-control" placeholder="Post title" required />
+            </div>
+            <div class="mb-3">
+              <textarea id="content" class="form-control" rows="6" placeholder="Write your post here..." required></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Image (optional)</label>
+              <input id="image" type="file" accept="image/*" class="form-control form-control-sm" />
+            </div>
+            
+            <button id="saveBtn" class="btn btn-primary" type="submit">Save Post</button>
+          </form>
+        </div>
+      </div>
+
+    <h2>Posts</h2>
+    <div id="posts"></div>
+    </div>
+
+    <script>
+      // If the page was opened via file:// and the links were generated
+      // as relative, ensure they point to the correct local files. This
+      // also helps when the page is served from a server – no-op then.
+      (function(){
+        try{
+          const proto = (window && window.location && window.location.protocol) || '';
+          if(proto === 'file:'){
+            const login = document.getElementById('loginLink');
+            const register = document.getElementById('registerLink');
+            if(login) login.href = 'login.html';
+            if(register) register.href = 'register.html';
+          }
+        }catch(e){}
+      })();
+    </script>
+
+    <script>
+  // Choose API base that works when served (http://localhost:3000) and when opened from file://
+  const apiBase = (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') ? 'http://localhost:3000/api' : '/api';
+  const CREATOR_NAME = 'Harshitth';
+  let allPosts = [];
+  let filteredPosts = [];
+  let searchTerm = '';
+  let savedBtn; // will be assigned on DOMContentLoaded
+
+  // Saved posts persistence (store created post ids in localStorage so
+  // the hover-pop effect can persist across reloads)
+  function getSavedIds(){ try{ return JSON.parse(localStorage.getItem('savedPosts')||'[]'); }catch(e){ return []; } }
+  function addSavedId(id){ if(!id) return; const arr = getSavedIds(); if(!arr.includes(id)){ arr.push(id); localStorage.setItem('savedPosts', JSON.stringify(arr)); } }
+  function removeSavedId(id){ if(!id) return; try{ const arr = getSavedIds().filter(x=>x!==id); localStorage.setItem('savedPosts', JSON.stringify(arr)); }catch(e){} }
+  function isSavedId(id){ if(!id) return false; return getSavedIds().includes(id); }
+
+  // Local posts cache (used when server is unavailable or to persist client-only posts)
+  function getLocalPosts(){ try{ return JSON.parse(localStorage.getItem('localPosts')||'{}'); }catch(e){ return {}; } }
+  function saveLocalPost(obj){ if(!obj || !obj._id) return; const m = getLocalPosts(); m[obj._id] = obj; localStorage.setItem('localPosts', JSON.stringify(m)); }
+  function removeLocalPost(id){ const m = getLocalPosts(); if(m[id]){ delete m[id]; localStorage.setItem('localPosts', JSON.stringify(m)); } }
+
+  // Local comments storage (per post) for offline fallback
+  function getLocalCommentsMap(){ try{ return JSON.parse(localStorage.getItem('localComments')||'{}'); }catch(e){ return {}; } }
+  function getLocalComments(postId){ const m = getLocalCommentsMap(); return m[postId] || []; }
+  function addLocalComment(postId, comment){ if(!postId || !comment) return; const m = getLocalCommentsMap(); m[postId] = m[postId] || []; m[postId].push(comment); localStorage.setItem('localComments', JSON.stringify(m)); }
+  function clearLocalComments(postId){ const m = getLocalCommentsMap(); if(m[postId]){ delete m[postId]; localStorage.setItem('localComments', JSON.stringify(m)); } }
+
+  // Likes persistence (simple per-post like counts stored in localStorage)
+  function getLikesMap(){ try{ return JSON.parse(localStorage.getItem('postLikes')||'{}'); }catch(e){ return {}; } }
+  function getLikeCount(id){ const m = getLikesMap(); return m[id] || 0; }
+  function incrementLike(id){ if(!id) return 0; const m = getLikesMap(); m[id] = (m[id] || 0) + 1; localStorage.setItem('postLikes', JSON.stringify(m)); return m[id]; }
+
+  // Dislikes persistence (separate map)
+  function getDislikesMap(){ try{ return JSON.parse(localStorage.getItem('postDislikes')||'{}'); }catch(e){ return {}; } }
+  function getDislikeCount(id){ const m = getDislikesMap(); return m[id] || 0; }
+  function incrementDislike(id){ if(!id) return 0; const m = getDislikesMap(); m[id] = (m[id] || 0) + 1; localStorage.setItem('postDislikes', JSON.stringify(m)); return m[id]; }
+
+  // Views persistence (local client-side counts). We also attempt to POST to server
+  // at /api/posts/:id/views when a view is recorded (server may ignore if not implemented).
+  function getViewsMap(){ try{ return JSON.parse(localStorage.getItem('postViews')||'{}'); }catch(e){ return {}; } }
+  function getLocalViewCount(id){ const m = getViewsMap(); return m[id] || 0; }
+  function incrementLocalView(id){ if(!id) return 0; const m = getViewsMap(); m[id] = (m[id] || 0) + 1; localStorage.setItem('postViews', JSON.stringify(m)); return m[id]; }
+  function recordViewOnServer(id){ if(!id) return; fetch(`${apiBase}/posts/${id}/views`, { method:'POST' }).catch(()=>{}); }
+
+      function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+      function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+      function highlight(text, term){ if(!term) return escapeHtml(text); const re = new RegExp(`(${escapeRegExp(term)})`,'ig'); return escapeHtml(text).replace(re,'<span class="hl">$1</span>'); }
+      // Compute saved set (union of local saved ids and server-side savedBy for current user)
+      function getSavedSet(list){
+        const set = new Set(getSavedIds()||[]);
+        const uid = getCurrentUserId();
+        if(uid && Array.isArray(list)){
+          for(const p of list){
+            if(p && Array.isArray(p.savedBy)){
+              const arr = p.savedBy.map(x => typeof x === 'string' ? x : (x && x._id ? String(x._id) : String(x)));
+              if(arr.includes(uid)) set.add(p._id);
+            }
+          }
+        }
+        return set;
+      }
+
+      function getSavedPosts(list){ const set = getSavedSet(list); return (list||[]).filter(p=> set.has(p._id)); }
+
+      function updateSavedButton(){ try{ const btn = savedBtn || document.getElementById('savedBtn'); if(!btn) return; const count = getSavedPosts(allPosts).length; btn.textContent = `Saved (${count})`; btn.disabled = (count===0); }catch(e){} }
+
+      function openSavedList(){
+        const items = getSavedPosts(allPosts);
+        const listEl = document.getElementById('savedList');
+        if(!listEl) return;
+        if(!items.length){ listEl.innerHTML = '<div class="text-muted">No saved posts yet.</div>'; }
+        else {
+          listEl.innerHTML = items.map(p=>{
+            const img = p.imageUrl ? `<img src="${p.imageUrl}" style="height:40px;width:40px;object-fit:cover;border-radius:6px;margin-right:8px;">` : (p.imageData ? `<img src="${p.imageData}" style="height:40px;width:40px;object-fit:cover;border-radius:6px;margin-right:8px;">` : '');
+            const title = escapeHtml(p.title||'Untitled');
+            return `<div class="d-flex align-items-center py-2 border-bottom">
+              <div>${img}</div>
+              <div class=\"flex-grow-1\"><a href=\"#\" data-id=\"${p._id}\" class=\"saved-link text-decoration-none\">${title}</a></div>
+              <div class=\"d-flex gap-2\">
+                <button class=\"btn btn-sm btn-primary\" data-view-id=\"${p._id}\">View</button>
+                <button class=\"btn btn-sm btn-outline-secondary\" onclick=\"toggleSave('${p._id}', this)\">Unsave</button>
+              </div>
+            </div>`;
+          }).join('');
+        }
+        // Bind click to scroll to the post and close modal
+        listEl.querySelectorAll('.saved-link').forEach(a=>{
+          a.addEventListener('click', (e)=>{
+            e.preventDefault();
+            const id = a.getAttribute('data-id');
+            const card = document.querySelector(`#posts [data-id="${id}"]`);
+            if(card){ card.scrollIntoView({behavior:'smooth', block:'start'}); }
+            try{ const modalEl = document.getElementById('savedModal'); const m = bootstrap && bootstrap.Modal ? bootstrap.Modal.getOrCreateInstance(modalEl) : null; if(m) m.hide(); }catch(_){ }
+          });
+        });
+        // Bind view buttons to open a post view modal
+        listEl.querySelectorAll('button[data-view-id]').forEach(btn=>{
+          btn.addEventListener('click', ()=>{
+            const id = btn.getAttribute('data-view-id');
+            openPostView(id);
+          });
+        });
+        try{ const modalEl = document.getElementById('savedModal'); const m = bootstrap && bootstrap.Modal ? new bootstrap.Modal(modalEl) : null; if(m) m.show(); }catch(_){ }
+      }
+      // Return true if a post is considered saved for the current client/user
+      function isPostSaved(post){
+        if(!post) return false;
+        // local saved ids take precedence
+        if(isSavedId(post._id)) return true;
+        const cur = getCurrentUserId();
+        if(!cur) return false;
+        if(Array.isArray(post.savedBy)){
+          try{
+            const savedByStrings = post.savedBy.map(x => typeof x === 'string' ? x : (x && x._id ? String(x._id) : String(x)));
+            return savedByStrings.includes(cur);
+          }catch(e){ return false; }
+        }
+        return false;
+      }
+
+      
+
+      function renderPosts(list){
+        const container = document.getElementById('posts'); container.innerHTML = '';
+        list.forEach((p,i)=>{
+          const el = document.createElement('div'); el.className = 'card mb-3 post-card fade-in-up'; el.style.animationDelay = `${i*30}ms`;
+          // mark each card with the post id so we can target newly created posts
+          el.dataset.id = p._id || '';
+          // if this post is saved either locally or for current user, mark it
+          if(isPostSaved(p)) el.classList.add('saved');
+          const imageHtml = p.imageUrl ? `<div class="mb-2"><img src="${p.imageUrl}" class="post-image"/></div>` : (p.imageData ? `<div class="mb-2"><img src="${p.imageData}" class="post-image"/></div>` : '');
+          el.innerHTML = `
+            <div class="card-body">
+              <div class="mb-1"><small class="text-muted">By ${escapeHtml(p.author || p.authorName || CREATOR_NAME)}</small></div>
+              <h5 class="card-title">${highlight(p.title, searchTerm)}<span class="badge bg-success ms-2 saved-badge" style="display:inline-block">✔ Saved</span></h5>
+              ${imageHtml}
+              <p class="card-text">${highlight(p.content.replace(/\n/g,'<br>'), searchTerm)}</p>
+              <div class="mb-2"><small class="text-muted">${new Date(p.createdAt).toLocaleString()} · <span class="view-count">${(p.views||0) + getLocalViewCount(p._id)} ${( ((p.views||0) + getLocalViewCount(p._id))===1) ? 'view' : 'views' }</span></small></div>
+              <div class="mb-2 d-flex align-items-center gap-2">
+                <div>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="showCommentForm('${p._id}', this)">Add comment</button>
+                  <button class="btn btn-sm btn-outline-secondary ms-1 save-toggle" data-id="${p._id}" onclick="toggleSave('${p._id}', this)">${ isPostSaved(p) ? 'Unsave' : 'Save' }</button>
+                  <button class="btn btn-sm btn-danger ms-1" onclick="deletePost('${p._id}')">Delete</button>
+                </div>
+                <div class="ms-auto d-flex align-items-center gap-1">
+                  <button class="btn btn-sm btn-outline-primary like-btn" data-id="${p._id}">♥ <span class="like-count">${getLikeCount(p._id)}</span></button>
+                  <button class="btn btn-sm btn-outline-secondary dislike-btn" data-id="${p._id}">👎 <span class="dislike-count">${getDislikeCount(p._id)}</span></button>
+                </div>
+              </div>
+              <div id="comments-${p._id}" class="comments-wrap"></div>
+            </div>`;
+          container.appendChild(el);
+          loadComments(p._id);
+          // Record a view the first time the card becomes visible this session.
+          (function(card, post){
+            try{
+              const seenKey = 'viewed_' + (post._id||'');
+              if(!sessionStorage.getItem(seenKey)){
+                const obs = new IntersectionObserver((entries, o)=>{
+                  entries.forEach(en=>{
+                    if(en.isIntersecting){
+                      const newLocal = incrementLocalView(post._id);
+                      const viewSpan = card.querySelector('.view-count');
+                      const total = (post.views||0) + newLocal;
+                      if(viewSpan) viewSpan.textContent = total + (total===1? ' view' : ' views');
+                      // try to notify server endpoint (no-op if missing)
+                      recordViewOnServer(post._id);
+                      sessionStorage.setItem(seenKey,'1');
+                      o.unobserve(en.target);
+                    }
+                  });
+                }, {threshold:0.5});
+                obs.observe(card);
+              }
+            }catch(e){ /* ignore */ }
+          })(el, p);
+          // wire up like and dislike buttons for this newly created DOM node
+          const likeBtn = el.querySelector('.like-btn');
+          if(likeBtn){ likeBtn.addEventListener('click', (ev)=>{ ev.preventDefault(); const id = likeBtn.dataset.id; const newCount = incrementLike(id); const span = likeBtn.querySelector('.like-count'); if(span) span.textContent = newCount; }); }
+          const dislikeBtn = el.querySelector('.dislike-btn');
+          if(dislikeBtn){ dislikeBtn.addEventListener('click', (ev)=>{ ev.preventDefault(); const id = dislikeBtn.dataset.id; const newCount = incrementDislike(id); const span = dislikeBtn.querySelector('.dislike-count'); if(span) span.textContent = newCount; }); }
+          // show saved badge immediately for persisted saved posts
+          const badge = el.querySelector('.saved-badge'); if(badge && el.classList.contains('saved')){ badge.classList.add('show'); setTimeout(()=>badge.classList.remove('show'), 2600); }
+        });
+      }
+
+      async function fetchPosts(){
+        try{
+          const res = await fetch(`${apiBase}/posts`);
+          if(res.ok){ allPosts = await res.json(); }
+          else { allPosts = []; }
+        }catch(err){
+          // server not reachable — fall back to empty server list
+          allPosts = [];
+        }
+        // merge any locally saved posts (client-only) so saved posts remain visible
+        const local = getLocalPosts();
+        const localList = Object.keys(local).map(k=>local[k]);
+        // prefer server posts but append local-only posts which are not present on server
+        const serverIds = new Set(allPosts.map(p=>p._id));
+        const merged = allPosts.slice();
+        for(const lp of localList){ if(!serverIds.has(lp._id)) merged.push(lp); }
+        allPosts = merged;
+        applyFilter();
+        try{ updateSavedButton(); }catch(e){}
+      }
+  // Filter and render posts (no separate saved area)
+  function applyFilter(){ if(!searchTerm) filteredPosts = allPosts.slice(); else { const t = searchTerm.toLowerCase(); filteredPosts = allPosts.filter(p => (p.title||'').toLowerCase().includes(t) || (p.content||'').toLowerCase().includes(t)); } renderPosts(filteredPosts); }
+
+      async function loadComments(postId){
+        const wrap = document.getElementById(`comments-${postId}`); if(!wrap) return;
+        let comments = [];
+        try{
+          const res = await fetch(`${apiBase}/posts/${postId}/comments`);
+          if(res.ok){ comments = await res.json(); }
+        }catch(e){ /* ignore network error, fall back to local comments */ }
+        // append any local comments stored while offline
+        const local = getLocalComments(postId) || [];
+        const merged = (comments || []).concat(local);
+        const html = merged.map(c=>`<div class="border-top pt-2 mt-2 comment-item"><b>${escapeHtml(c.authorName||c.author||'Anonymous')}</b> <small class="text-muted">${new Date(c.createdAt||c.created_at||Date.now()).toLocaleString()}</small><div>${escapeHtml(c.content||c.body||'')}</div></div>`).join('') + `<div class="mt-2" id="comment-form-${postId}"></div>`;
+        wrap.innerHTML = html;
+        wrap.querySelectorAll('.comment-item').forEach((c,idx)=>{ c.classList.add('pop'); c.style.animationDelay = `${idx*30}ms`; });
+      }
+
+      function showCommentForm(postId, btn){
+        const holder = document.getElementById(`comment-form-${postId}`);
+        holder.innerHTML = `<div class="input-group mb-3"><input id="comment-name-${postId}" class="form-control" placeholder="Your name"><input id="comment-content-${postId}" class="form-control" placeholder="Comment"><button class="btn btn-primary" onclick="submitComment('${postId}')">Send</button></div>`;
+        if(btn){ btn.classList.add('pop'); setTimeout(()=>btn.classList.remove('pop'),350); }
+      }
+
+      async function submitComment(postId){
+        const nameEl = document.getElementById(`comment-name-${postId}`);
+        const contentEl = document.getElementById(`comment-content-${postId}`);
+        const name = nameEl ? nameEl.value || 'Anonymous' : 'Anonymous';
+        const content = contentEl ? contentEl.value : '';
+        if(!content) return alert('Comment cannot be empty');
+        try{
+          const res = await fetch(`${apiBase}/posts/${postId}/comments`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ authorName:name, content }) });
+          if(res.ok){ if(nameEl) nameEl.value=''; if(contentEl) contentEl.value=''; loadComments(postId); return; }
+          // if server returns non-ok, fall through to local save
+        }catch(err){ /* network error - fall back to local store below */ }
+        // Fallback: store comment locally so it appears in the UI when offline
+        const localComment = { id: 'local-c-' + Date.now(), authorName: name, content, createdAt: new Date().toISOString() };
+        addLocalComment(postId, localComment);
+        if(nameEl) nameEl.value=''; if(contentEl) contentEl.value=''; loadComments(postId);
+      }
+
+      async function deletePost(id){
+        if(!confirm('Delete this post?')) return;
+        const container = document.getElementById('posts');
+        const card = container ? container.querySelector(`[onclick*="deletePost('${id}')"]`) : null;
+        // If this is a local-only post, remove from local store immediately
+        if(id && id.toString().startsWith('local-')){
+          removeLocalPost(id);
+          removeSavedId(id);
+          clearLocalComments(id);
+          if(card){ const cardRoot = card.closest('.card'); if(cardRoot){ cardRoot.style.transition='opacity .28s ease, height .28s ease'; cardRoot.style.opacity='0'; setTimeout(()=>fetchPosts(),300); return; } }
+          fetchPosts();
+          return;
+        }
+        try{
+          const res = await fetch(`${apiBase}/posts/${id}`,{method:'DELETE'});
+          if(!res.ok){ /* server returned an error - still try to remove UI element if present */ }
+        }catch(err){ /* network error - proceed to remove UI element */ }
+        if(card){ const cardRoot = card.closest('.card'); if(cardRoot){ cardRoot.style.transition='opacity .28s ease, height .28s ease'; cardRoot.style.opacity='0'; setTimeout(()=>fetchPosts(),300); return; } }
+        fetchPosts();
+      }
+
+      document.getElementById('postForm').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('content').value;
+  const imageEl = document.getElementById('image');
+  const file = imageEl && imageEl.files && imageEl.files[0] ? imageEl.files[0] : null;
+  // helper to convert file to dataURL for offline local saving
+  async function fileToDataUrl(f){ if(!f) return null; return await new Promise((resolve)=>{ const r = new FileReader(); r.onload = ()=>resolve(r.result); r.onerror = ()=>resolve(null); r.readAsDataURL(f); }); }
+  const imageDataUrl = file ? await fileToDataUrl(file) : null;
+  const saveBtn = document.getElementById('saveBtn');
+  // small button pop feedback
+  saveBtn.classList.add('pop'); setTimeout(()=>saveBtn.classList.remove('pop'),350);
+
+  // briefly show 'Saved' badge near the form to confirm save action
+  (function flashFormSaved(){ const b = document.createElement('span'); b.className='badge bg-success ms-2 saved-badge show'; b.textContent='Saved'; const saveParent = saveBtn.parentElement; if(saveParent) { saveParent.appendChild(b); setTimeout(()=>{ b.classList.remove('show'); setTimeout(()=>b.remove(),300); },1600); } })();
+
+        // post the new post and try to get the created object back
+        let created = null;
+        try{
+          let res;
+          const token = localStorage.getItem('authToken');
+          const headers = token ? { Authorization: 'Bearer ' + token } : {};
+          if(file){
+            const fd = new FormData(); fd.append('title', title); fd.append('content', content); fd.append('image', file, file.name);
+            res = await fetch(`${apiBase}/posts`, { method:'POST', body: fd, headers });
+          } else {
+            res = await fetch(`${apiBase}/posts`,{method:'POST',headers: Object.assign({'Content-Type':'application/json'}, headers), body: JSON.stringify({ title, content })});
+          }
+          if(res && res.ok){ created = await res.json().catch(()=>null); }
+        }catch(err){ /* ignore network errors for now */ }
+
+        // clear inputs
+        document.getElementById('title').value=''; document.getElementById('content').value='';
+
+        // reload posts and then animate the newly created card if found
+        // If server returned a created object use it; otherwise persist locally so the saved post is visible.
+        let createdId = null;
+        if(created && created._id){
+          // server created post — optimistically render it immediately
+          createdId = created._id;
+          try{ const si = document.getElementById('search'); if(si){ si.value = ''; } }catch(_){ }
+          searchTerm = '';
+          // put the new post at the top and render right away
+          allPosts.unshift(created);
+          applyFilter();
+          // then reconcile with server (to get any populated fields/sorting)
+          fetchPosts();
+        } else {
+          // server unavailable or failed: create local post object and persist locally
+          const localId = 'local-' + Date.now();
+          const localPost = { _id: localId, title, content, createdAt: new Date().toISOString(), author: CREATOR_NAME };
+          if(imageDataUrl) localPost.imageData = imageDataUrl; // store image as data URL for offline display
+          saveLocalPost(localPost);
+          addSavedId(localId);
+          // add to in-memory list and re-render
+          try{ const si = document.getElementById('search'); if(si){ si.value = ''; } }catch(_){ }
+          searchTerm = '';
+          allPosts.unshift(localPost);
+          applyFilter();
+          createdId = localId;
+        }
+
+        // mark the created card as saved and show brief badge animation
+        if(createdId){
+          const card = document.querySelector(`#posts [data-id="${createdId}"]`);
+          if(card){
+            card.classList.add('saved');
+            addSavedId(createdId);
+            card.scrollIntoView({behavior:'smooth', block:'start'});
+            const cBadge = card.querySelector('.saved-badge'); if(cBadge){ cBadge.classList.add('show'); setTimeout(()=>cBadge.classList.remove('show'), 2200); }
+          }
+        }
+      });
+
+      // Search input with debounce
+      const searchInput = document.getElementById('search'); let debounceTimer = null; searchInput.addEventListener('input', (e)=>{ clearTimeout(debounceTimer); debounceTimer = setTimeout(()=>{ searchTerm = e.target.value.trim(); applyFilter(); }, 200); });
+
+      // Subtle focus animation when the user starts writing a post
+      (function(){
+        const titleEl = document.getElementById('title');
+        const contentEl = document.getElementById('content');
+        const formEl = document.getElementById('postForm');
+        if(titleEl && contentEl && formEl){
+          const formCard = formEl.closest('.card');
+          function flashForm(){ if(!formCard) return; formCard.classList.add('pop'); clearTimeout(formCard._popTimer); formCard._popTimer = setTimeout(()=>formCard.classList.remove('pop'),420); }
+          titleEl.addEventListener('focus', flashForm);
+          contentEl.addEventListener('focus', flashForm);
+        }
+      })();
+
+      // Ctrl+Enter submit shortcut (no live preview)
+      (function(){
+        const titleEl = document.getElementById('title');
+        const contentEl = document.getElementById('content');
+        const formEl = document.getElementById('postForm');
+        if(titleEl && contentEl && formEl){
+          const submitShortcut = (e)=>{
+            if((e.ctrlKey||e.metaKey) && e.key === 'Enter'){
+              if(typeof formEl.requestSubmit === 'function') formEl.requestSubmit();
+              else { const btn = formEl.querySelector('button[type="submit"]'); if(btn) btn.click(); }
+            }
+          };
+          titleEl.addEventListener('keydown', submitShortcut);
+          contentEl.addEventListener('keydown', submitShortcut);
+        }
+      })();
+
+  // Dark-mode toggle and saved-theme handling removed per user request.
+
+      // --- Authentication UI helpers: connect index with login/register pages ---
+      function updateAuthUI(){
+        try{
+          const token = localStorage.getItem('authToken');
+          const userJson = localStorage.getItem('authUser');
+          const loginLink = document.getElementById('loginLink');
+          const registerLink = document.getElementById('registerLink');
+          const userArea = document.getElementById('authUserArea');
+          const userNameSpan = document.getElementById('authUserName');
+          if(token && userJson){
+            // show user area
+            let name = '';
+            try{ const u = JSON.parse(userJson); name = u.name || u.email || 'You'; }catch(e){ name = userJson || 'You'; }
+            if(userNameSpan) userNameSpan.textContent = name;
+            if(loginLink) loginLink.style.display = 'none';
+            if(registerLink) registerLink.style.display = 'none';
+            if(userArea) userArea.style.display = 'inline-flex';
+          } else {
+            if(loginLink) loginLink.style.display = 'inline-block';
+            if(registerLink) registerLink.style.display = 'inline-block';
+            if(userArea) userArea.style.display = 'none';
+          }
+        }catch(e){ /* ignore */ }
+      }
+
+      // Logout clears token and user info and updates UI
+      (function(){
+        const logoutBtn = document.getElementById('logoutBtn');
+        if(logoutBtn){ logoutBtn.addEventListener('click', ()=>{ localStorage.removeItem('authToken'); localStorage.removeItem('authUser'); updateAuthUI(); fetchPosts(); }); }
+      })();
+
+      // initial load
+      updateAuthUI();
+  // wire saved button
+  savedBtn = document.getElementById('savedBtn'); if(savedBtn){ savedBtn.addEventListener('click', openSavedList); }
+      fetchPosts();
+  // keep saved count in sync after first fetch completes
+  setTimeout(updateSavedButton, 300);
+
+      // helper to read current logged in user id
+      function getCurrentUserId(){ try{ const u = JSON.parse(localStorage.getItem('authUser')||'null'); return u && u._id ? u._id : null; }catch(e){ return null; } }
+
+      // Open a modal to view a single post (title, image, content)
+      function openPostView(postId){
+        const p = (allPosts||[]).find(x=> String(x._id) === String(postId));
+        const modalEl = document.getElementById('postViewModal');
+        if(!modalEl){ return; }
+        const titleEl = modalEl.querySelector('.post-title');
+        const bodyEl = modalEl.querySelector('.post-body');
+        if(!p){
+          if(titleEl) titleEl.textContent = 'Post not found';
+          if(bodyEl) bodyEl.innerHTML = '<div class="text-muted">This post no longer exists.</div>';
+        } else {
+          if(titleEl) titleEl.textContent = p.title || 'Untitled';
+          const img = p.imageUrl ? `<img src="${p.imageUrl}" class="img-fluid mb-2" style="border-radius:8px;">` : (p.imageData ? `<img src="${p.imageData}" class="img-fluid mb-2" style="border-radius:8px;">` : '');
+          const author = escapeHtml(p.author || p.authorName || CREATOR_NAME);
+          const when = new Date(p.createdAt).toLocaleString();
+          const content = (p.content||'').replace(/\n/g,'<br>');
+          bodyEl.innerHTML = `<div class="text-muted mb-2">By ${author} · ${when}</div>${img}<div>${content}</div>`;
+        }
+        try{ const m = bootstrap && bootstrap.Modal ? new bootstrap.Modal(modalEl) : null; if(m) m.show(); }catch(_){}
+      }
+
+      // toggle save action: call server if authenticated, otherwise use localStorage fallback
+      async function toggleSave(postId, btn){
+        const token = localStorage.getItem('authToken');
+        const savedNow = isSavedId(postId);
+        if(token){
+          try{
+            const url = `${apiBase}/posts/${postId}/${savedNow ? 'unsave' : 'save'}`;
+            const res = await fetch(url, { method:'POST', headers: { 'Authorization': 'Bearer ' + token } });
+            if(res.ok){
+              // update UI quickly
+              if(savedNow){ removeSavedId(postId); if(btn) btn.textContent = 'Save'; }
+              else { addSavedId(postId); if(btn) btn.textContent = 'Unsave'; }
+              fetchPosts();
+              return;
+            } else {
+              // server error - fall through to local fallback
+            }
+          }catch(e){ /* network error - fallback */ }
+        }
+        // fallback: toggle locally
+        if(savedNow){ removeSavedId(postId); if(btn) btn.textContent = 'Save'; }
+        else { addSavedId(postId); if(btn) btn.textContent = 'Unsave'; }
+        // update UI
+        const card = document.querySelector(`#posts [data-id="${postId}"]`);
+        if(card){ if(isSavedId(postId)) card.classList.add('saved'); else card.classList.remove('saved'); }
+        updateSavedButton();
+      }
+    </script>
+    <!-- Saved posts modal -->
+    <div class="modal fade" id="savedModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Saved posts</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="savedList"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Post view modal -->
+    <div class="modal fade" id="postViewModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title post-title">Post</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body post-body"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Bootstrap JS for modal support -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

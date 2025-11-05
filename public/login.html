@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{ --bg:#ffffff; --card:#ffffff; --text:#0b0b0b; --muted:#666666; --accent:#000000; --border:#e6e6e6 }
+      body{ background:var(--bg); color:var(--text); font-family:'Inter', system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; transition:none; background-image: linear-gradient(rgba(3,6,20,0.35), rgba(3,6,20,0.12)), var(--bg-image, url('./assets/bg.jpg')); background-size: cover; background-position: center center; background-attachment: fixed; background-repeat: no-repeat; }
+      .container{max-width:520px}
+      .card{background:var(--card);border:1px solid var(--border);border-radius:12px}
+      .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+      .muted{color:var(--muted)}
+      /* Subtle glowing text for dark photo background */
+      .glow{ color:#ffffff; text-shadow:0 0 6px rgba(255,255,255,0.55), 0 0 14px rgba(255,255,255,0.28); letter-spacing:0.2px }
+      .glow-soft{ color:#f3f3f3; text-shadow:0 0 4px rgba(255,255,255,0.38) }
+      /* Optional: enhance focus ring a bit for better visibility on dark bg */
+      .form-control:focus{ box-shadow:0 0 0 .2rem rgba(255,255,255,0.18), 0 0 10px rgba(255,255,255,0.25); border-color:rgba(255,255,255,0.35) }
+      .btn-primary{ box-shadow:0 8px 24px rgba(0,0,0,0.35) }
+    </style>
+  </head>
+  <body class="p-4">
+    <div class="container" style="max-width:520px">
+      <h3 class="glow">Login</h3>
+      <form id="loginForm">
+        <div class="mb-2"><label class="form-label glow-soft">Email</label><input id="email" class="form-control" type="email" required/></div>
+        <div class="mb-2"><label class="form-label glow-soft">Password</label>
+          <div class="input-group">
+            <input id="password" class="form-control" type="password" required/>
+            <button id="togglePwd" class="btn btn-outline-secondary" type="button" aria-label="Toggle password">👁️</button>
+          </div>
+        </div>
+        <div class="mb-2 form-check"><input id="rememberMe" type="checkbox" class="form-check-input"/><label class="form-check-label glow-soft" for="rememberMe">Remember me</label></div>
+        <div class="mb-2"><button id="loginBtn" class="btn btn-primary" type="submit">Login</button> <a id="registerLink" href="register.html" class="btn btn-link">Register</a></div>
+        <div id="msg" class="mt-2 text-danger"></div>
+      </form>
+    </div>
+  <script src="app.js"></script>
+    <script>
+      // wire up login form using shared app helpers
+      try{ app.enhanceAuthForm('loginForm', 'login'); }catch(e){ /* ignore */ }
+      // set register link with returnTo if available
+      try{ const r = document.referrer || 'index.html'; const rl = document.getElementById('registerLink'); if(rl) rl.href = 'register.html?returnTo=' + encodeURIComponent(r);}catch(e){}
+      // password visibility toggle and remember-me handling
+      try{
+        const pwd = document.getElementById('password'); const t = document.getElementById('togglePwd'); const btn = document.getElementById('loginBtn');
+        if(t && pwd){ t.addEventListener('click', ()=>{ pwd.type = pwd.type === 'password' ? 'text' : 'password'; t.textContent = pwd.type === 'password' ? '👁️' : '🙈'; }); }
+        // if rememberMe checked, persist email locally
+        const rem = document.getElementById('rememberMe');
+        try{ const saved = localStorage.getItem('rememberEmail'); if(saved && document.getElementById('email')) document.getElementById('email').value = saved; }catch(e){}
+        document.getElementById('loginForm').addEventListener('submit', (ev)=>{ try{ if(rem && rem.checked){ localStorage.setItem('rememberEmail', document.getElementById('email').value); } else { localStorage.removeItem('rememberEmail'); } }catch(e){} });
+      }catch(e){}
+    </script>
+    <script>
+      // background picker (same logic as index)
+      (function(){
+        const candidates = ['yoo.jpg'];
+        function pickRandomBackground(){
+          const choice = candidates[Math.floor(Math.random()*candidates.length)];
+          const url = `./assets/${choice}`;
+          const img = new Image();
+          img.onload = function(){ document.documentElement.style.setProperty('--bg-image', `url('${url}')`); };
+          img.onerror = function(){ document.documentElement.style.setProperty('--bg-image', `url('./assets/bg.svg')`); };
+          img.src = url;
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pickRandomBackground);
+        else pickRandomBackground();
+      })();
+    </script>
+  </body>
+</html>
